@@ -1,5 +1,5 @@
 /*
-Copyright 2017 the Velero contributors.
+Copyright 2020 the Velero contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ func (a *RemapCRDVersionAction) AppliesTo() (velero.ResourceSelector, error) {
 	}, nil
 }
 
-// TODO, if this works
 func (a *RemapCRDVersionAction) Execute(item runtime.Unstructured, backup *v1.Backup) (runtime.Unstructured, []velero.ResourceIdentifier, error) {
 	a.logger.Info("Executing RemapCRDVersionAction")
 
@@ -54,43 +53,37 @@ func (a *RemapCRDVersionAction) Execute(item runtime.Unstructured, backup *v1.Ba
 
 	log := a.logger.WithField("plugin", "RemapCRDVersionAction").WithField("CRD", crd.Name)
 
-	// TODO: Is it possible or likely that a CRD had multiple versions without a Schema?
-	if len(crd.Spec.Versions) == 1 && crd.Spec.Versions[0].Schema == nil {
-		log.Debug("CRD is a candidate for v1beta1 backup")
+	// check spec schema
+	if len(crd.Spec.Versions) > 0 {
+		// check the first version schema is enough to know it'	s original api version was
+		// since
+		//    for v1beta1, all versions share the same schema and shema might be empty
+		//    for v1, all versions must have schema and schame cannot be empty
+		if crd.Spec.Versions[0].Schema == nil || crd.Spec.Versions[0].Schema.OpenAPIV3Schema == nil {
+			log.Debug("CRD is a candidate for v1beta1 backup")
 
-		// Two solutions are presented here, and they both appear to work. I've uncommented them both for readability; they won't necessarily compile this way.
-
-		// Solution 1: create empty structs where they're required, so that the definition is technically conformant.
-		// Pros:
-		//   - Compatible with the existing restore plugin for x-preserve-unknown-fields, which is necessary on v1 without a schema
-		//   - "upgrading" the CRD to v1 keeps the backup valid for longer, across more versions of Kubernetes
-		// Cons:
-		//   - Even though the structs are empty, they're not taking the data as it was.
-		crd.Spec.Versions[0].Schema = new(apiextv1.CustomResourceValidation)
-		crd.Spec.Versions[0].Schema.OpenAPIV3Schema = new(apiextv1.JSONSchemaProps)
-
-		newItem, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&crd)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "unable to convert crd to unstructured item")
+			tempMap := item.UnstructuredContent()
+			if err := unstructured.SetNestedField(tempMap, "apiextensions.k8s.io/v1beta1", "apiVersion"); err != nil {
+				return nil, nil, errors.Wrap(err, "unable to set apiversion to v1beta1")
+			}
+			item.SetUnstructuredContent(tempMap)
 		}
-
-		return &unstructured.Unstructured{Object: newItem}, nil, nil
 	}
 
-	// Solution 2: Change the API version that's retained in the backup so that on restore, it will be restored as v1beta1.
-	// Pros:
-	//   - Relatively simple; just changing a string
-	//   - Data is the same as what's in the source Kubernetes cluster - the only reason we got it as a v1 instance was due to our usage of the preferred version endpoint.
-	// Cons:
-	//   - Data in the backup won't be valid for as long - v1beta1 CRDs will have to be upgraded sooner rather than later - but is that Velero's problem?
+	// check status condition
+	for _, c := range crd.Status.Conditions {
+		// if the crd status is 'non-structural schema", change the api version as v1beta1
+		if c.Type == apiextv1.NonStructuralSchema {
+			log.Debug("CRD is a non-structural schema")
 
-	// Since we can't manipulate an Unstructured's Object map directly, get a copy to manipulate before setting it back
-	tempMap := item.UnstructuredContent()
+			tempMap := item.UnstructuredContent()
+			if err := unstructured.SetNestedField(tempMap, "apiextensions.k8s.io/v1beta1", "apiVersion"); err != nil {
+				return nil, nil, errors.Wrap(err, "unable to set apiversion to v1beta1")
+			}
+			item.SetUnstructuredContent(tempMap)
 
-	if err := unstructured.SetNestedField(tempMap, "apiextensions.k8s.io/v1beta1", "apiVersion"); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to set apiversion to v1beta1")
-	}
-	item.SetUnstructuredContent(tempMap)
+			break
+		}
 	}
 
 	return item, nil, nil

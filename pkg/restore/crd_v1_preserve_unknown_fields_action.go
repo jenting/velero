@@ -83,6 +83,12 @@ func (c *CRDV1PreserveUnknownFieldsAction) Execute(input *velero.RestoreItemActi
 			if v.Schema == nil {
 				continue
 			}
+			if v.Schema.OpenAPIV3Schema == nil {
+				continue
+			}
+			if v.Schema.OpenAPIV3Schema.XPreserveUnknownFields == nil {
+				continue
+			}
 
 			// Use the address, since the XPreserveUnknownFields value is undefined or true (false is not allowed)
 			preserve := true
