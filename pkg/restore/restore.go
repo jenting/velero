@@ -47,6 +47,7 @@ import (
 	"github.com/vmware-tanzu/velero/pkg/archive"
 	"github.com/vmware-tanzu/velero/pkg/client"
 	"github.com/vmware-tanzu/velero/pkg/discovery"
+	"github.com/vmware-tanzu/velero/pkg/features"
 	listers "github.com/vmware-tanzu/velero/pkg/generated/listers/velero/v1"
 	"github.com/vmware-tanzu/velero/pkg/kuberesource"
 	"github.com/vmware-tanzu/velero/pkg/label"
@@ -340,10 +341,20 @@ func (ctx *restoreContext) execute() (Result, Result) {
 		processedResources = sets.NewString()
 	)
 
-	backupResources, err := archive.NewParser(ctx.log, ctx.fileSystem).Parse(ctx.restoreDir)
-	if err != nil {
-		errs.AddVeleroError(errors.Wrap(err, "error parsing backup contents"))
-		return warnings, errs
+	// JenTing
+	// get source and target cluster all API versions and take insection, then
+	// 1. install target cluster preferred API preferred from insection if available
+	// 2. install source cluster preferred API version from insection if available
+	// 3. install the newest API version (according to semver) from insection if available
+	// 4. log warning/error if there is no insection API version between source and target cluster
+	backupResources := make(map[string]*archive.ResourceItems)
+	if features.IsEnabled(velerov1api.APIGroupVersionsFeatureFlag) {
+	} else {
+		backupResources, err = archive.NewParser(ctx.log, ctx.fileSystem).Parse(ctx.restoreDir)
+		if err != nil {
+			errs.AddVeleroError(errors.Wrap(err, "error parsing backup contents"))
+			return warnings, errs
+		}
 	}
 
 	// Iterate through an ordered list of resources to restore, checking each one to see if it should be restored.
