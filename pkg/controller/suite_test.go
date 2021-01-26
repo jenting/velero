@@ -83,8 +83,6 @@ type testEnvironment struct {
 	manager.Manager
 	client.Client
 	Config *rest.Config
-
-	doneMgr chan struct{}
 }
 
 // newTestEnvironment creates a new environment spinning up a local api-server.
@@ -114,16 +112,14 @@ func newTestEnvironment() *testEnvironment {
 		Manager: mgr,
 		Client:  mgr.GetClient(),
 		Config:  mgr.GetConfig(),
-		doneMgr: make(chan struct{}),
 	}
 }
 
 func (t *testEnvironment) startManager() error {
-	return t.Manager.Start(t.doneMgr)
+	return t.Manager.Start(context.Background())
 }
 
 func (t *testEnvironment) stop() error {
-	t.doneMgr <- struct{}{}
 	return env.Stop()
 }
 
