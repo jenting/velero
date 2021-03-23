@@ -83,4 +83,4 @@ jobs:
           kubectl version
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          ./_output/bin/linux/amd64/velero install --crds-only --dry-run -oyaml | kubectl apply -f -
+          ./_output/bin/linux/amd64/velero install --crds-only
