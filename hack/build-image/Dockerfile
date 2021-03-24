@@ -34,7 +34,7 @@ RUN wget --quiet https://github.com/kubernetes-sigs/kubebuilder/releases/downloa
     rm kubebuilder_2.3.1_linux_amd64.tar.gz
 
 # get controller-tools
-RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1
+RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0
 
 # get goimports (the revision is pinned so we don't indiscriminately update, but the particular commit
 # is not important)

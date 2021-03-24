@@ -28,7 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/vmware-tanzu/velero/config/crd/crds"
+	crdv1 "github.com/vmware-tanzu/velero/config/crd/v1/crds"
+	crdv1beta1 "github.com/vmware-tanzu/velero/config/crd/v1beta1/crds"
 	"github.com/vmware-tanzu/velero/pkg/buildinfo"
 )
 
@@ -235,7 +236,11 @@ func AllCRDs() *unstructured.UnstructuredList {
 	// Set the GVK so that the serialization framework outputs the list properly
 	resources.SetGroupVersionKind(schema.GroupVersionKind{Group: "", Version: "v1", Kind: "List"})
 
-	for _, crd := range crds.CRDs {
+	for _, crd := range crdv1beta1.CRDs {
+		crd.SetLabels(Labels())
+		appendUnstructured(resources, crd)
+	}
+	for _, crd := range crdv1.CRDs {
 		crd.SetLabels(Labels())
 		appendUnstructured(resources, crd)
 	}

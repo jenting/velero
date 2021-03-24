@@ -46,10 +46,16 @@ ${GOPATH}/src/k8s.io/code-generator/generate-groups.sh \
 
 # Generate manifests e.g. CRD, RBAC etc.
 controller-gen \
-  crd:preserveUnknownFields=false,trivialVersions=true \
+  crd:crdVersions=v1beta1,preserveUnknownFields=false,trivialVersions=true \
   paths=./pkg/apis/velero/v1/... \
   paths=./pkg/controller/... \
-  output:crd:artifacts:config=config/crd/bases
+  output:crd:artifacts:config=config/crd/v1beta1/bases
+
+controller-gen \
+  crd:crdVersions=v1,preserveUnknownFields=false,trivialVersions=true \
+  paths=./pkg/apis/velero/v1/... \
+  paths=./pkg/controller/... \
+  output:crd:artifacts:config=config/crd/v1/bases
 
 # this is a super hacky workaround for https://github.com/kubernetes/kubernetes/issues/91395
 # which a result of fixing the validation on CRD objects. The validation ensures the fields that are list map keys, are either marked
@@ -57,7 +63,10 @@ controller-gen \
 # With "containerPort" and "protocol" being considered as x-kubernetes-list-map-keys in the container ports, and "protocol" was not
 # a required field, the CRD would fail validation with errors similar to the one reported in https://github.com/kubernetes/kubernetes/issues/91395.
 # once controller-gen (above) is able to generate CRDs with `protocol` as a required field, this hack can be removed.
-kubectl patch -f config/crd/bases/velero.io_restores.yaml -p "$(cat hack/restore-crd-patch.json)" --type=json --local=true  -o yaml > /tmp/velero.io_restores-yaml.patched
-mv /tmp/velero.io_restores-yaml.patched config/crd/bases/velero.io_restores.yaml
+kubectl patch -f config/crd/v1beta1/bases/velero.io_restores.yaml -p "$(cat hack/restore-crd-v1beta1-patch.json)" --type=json --local=true  -o yaml > /tmp/velero.io_restores-yaml.patched
+mv /tmp/velero.io_restores-yaml.patched config/crd/v1beta1/bases/velero.io_restores.yaml
+kubectl patch -f config/crd/v1/bases/velero.io_restores.yaml -p "$(cat hack/restore-crd-v1-patch.json)" --type=json --local=true  -o yaml > /tmp/velero.io_restores-yaml.patched
+mv /tmp/velero.io_restores-yaml.patched config/crd/v1/bases/velero.io_restores.yaml
 
-go generate ./config/crd/crds
+go generate ./config/crd/v1beta1/crds
+go generate ./config/crd/v1/crds

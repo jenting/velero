@@ -4,21 +4,26 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: volumesnapshotlocations.velero.io
+  name: deletebackuprequests.velero.io
 spec:
   group: velero.io
   names:
-    kind: VolumeSnapshotLocation
-    listKind: VolumeSnapshotLocationList
-    plural: volumesnapshotlocations
-    singular: volumesnapshotlocation
+    kind: DeleteBackupRequest
+    listKind: DeleteBackupRequestList
+    plural: deletebackuprequests
+    singular: deletebackuprequest
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.provider
-      name: Provider
+    - description: Delete Backup Request status such as InProgress/Processed
+      jsonPath: .status.phase
+      name: Status
+      type: string
+    - description: Name of backup to be deleted
+      jsonPath: .spec.backupName
+      name: Backup Name
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -26,8 +31,7 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: VolumeSnapshotLocation is a location where Velero stores volume
-          snapshots.
+        description: DeleteBackupRequest is a request to delete one or more backups.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -42,30 +46,30 @@ spec:
           metadata:
             type: object
           spec:
-            description: VolumeSnapshotLocationSpec defines the specification for
-              a Velero VolumeSnapshotLocation.
+            description: DeleteBackupRequestSpec is the specification for which backups
+              to delete.
             properties:
-              config:
-                additionalProperties:
-                  type: string
-                description: Config is for provider-specific configuration fields.
-                type: object
-              provider:
-                description: Provider is the provider of the volume storage.
+              backupName:
                 type: string
             required:
-            - provider
+            - backupName
             type: object
           status:
-            description: VolumeSnapshotLocationStatus describes the current status
-              of a Velero VolumeSnapshotLocation.
+            description: DeleteBackupRequestStatus is the current status of a DeleteBackupRequest.
             properties:
+              errors:
+                description: Errors contains any errors that were encountered during
+                  the deletion process.
+                items:
+                  type: string
+                nullable: true
+                type: array
               phase:
-                description: VolumeSnapshotLocationPhase is the lifecycle phase of
-                  a Velero VolumeSnapshotLocation.
+                description: Phase is the current state of the DeleteBackupRequest.
                 enum:
-                - Available
-                - Unavailable
+                - New
+                - InProgress
+                - Processed
                 type: string
             type: object
         type: object
