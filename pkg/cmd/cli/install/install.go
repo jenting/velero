@@ -133,7 +133,7 @@ func NewInstallOptions() *InstallOptions {
 		UseVolumeSnapshots:      true,
 		NoDefaultBackupLocation: false,
 		CRDsOnly:                false,
-		CRDsVersion:             "v1beta1",
+		CRDsVersion:             "v1",
 		DefaultVolumesToRestic:  false,
 	}
 }
